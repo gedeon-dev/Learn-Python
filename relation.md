@@ -1,3 +1,90 @@
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+
+class Client(db.Model):
+    __tablename__ = 'clients'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String, nullable=False)
+    # Clé étrangère vers Architecte
+    architecte_id = db.Column(db.Integer, db.ForeignKey('architectes.id'))
+
+
+
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy()
+
+class Architecte(db.Model):
+    __tablename__ = 'architectes'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nom = db.Column(db.String, nullable=False)
+    prenom = db.Column(db.String, nullable=False)
+    tel = db.Column(db.Integer)
+    email = db.Column(db.String)
+    tarif_horaire = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String, nullable=False)
+
+    # Relation avec la table Client
+    clients = db.relationship('Client', backref='architecte', lazy='select')
+
+
+
+
+
+
+from alembic import op
+import sqlalchemy as sa
+
+# Identifiants de migration
+revision = 'xxxx_add_architecte_relation'
+down_revision = 'xxxx_previous_revision'
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    # 1. Créer la nouvelle table avec la relation
+    op.create_table(
+        'clients_new',
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('nom', sa.String, nullable=False),
+        sa.Column('architecte_id', sa.Integer, sa.ForeignKey('architectes.id'))
+    )
+
+    # 2. Copier les données existantes (si applicable)
+    op.execute("""
+        INSERT INTO clients_new (id, nom)
+        SELECT id, nom FROM clients
+    """)
+
+    # 3. Supprimer l'ancienne table
+    op.drop_table('clients')
+
+    # 4. Renommer la nouvelle table
+    op.rename_table('clients_new', 'clients')
+
+def downgrade():
+    # 1. Créer l'ancienne table sans la relation
+    op.create_table(
+        'clients_old',
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('nom', sa.String, nullable=False)
+    )
+
+    # 2. Copier les données
+    op.execute("""
+        INSERT INTO clients_old (id, nom)
+        SELECT id, nom FROM clients
+    """)
+
+    # 3. Supprimer la table avec la relation
+    op.drop_table('clients')
+
+    # 4. Renommer l'ancienne table
+    op.rename_table('clients_old', 'clients')
+
+
 my_flask_api/
 ├── app/
 │   ├── init.py
@@ -379,4 +466,8 @@ class Architecte(db.Model):
     tarif_horaire = db.Column(db.Integer, nullable=False)
     type = db.Column(db.String, nullable=False)
     clients = db.relationship('Client', backref='architecte', lazy="select")
+
+
+
+
 
