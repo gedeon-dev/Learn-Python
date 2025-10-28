@@ -369,3 +369,14 @@ def test_create_order(client):
     assert response.status_code == 201
     assert response.json["products"][0]["name"] == "Laptop"
 
+class Architecte(db.Model):
+    __tablename__ = 'architectes'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nom = db.Column(db.String, nullable=False)
+    prenom = db.Column(db.String, nullable=False)
+    tel = db.Column(db.Integer)
+    email = db.Column(db.String)
+    tarif_horaire = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String, nullable=False)
+    clients = db.relationship('Client', backref='architecte', lazy="select")
+
