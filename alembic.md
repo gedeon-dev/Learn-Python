@@ -1,3 +1,45 @@
+ @staticmethod
+    def assign_architecte_to_client(client_id, architecte_id):
+        client = Client.query.get(client_id)
+        architecte = Architecte.query.get(architecte_id)
+        if not client or not architecte:
+            return None
+        client.architecte_id = architecte_id
+        db.session.commit()
+        return client.to_dict()
+
+@client_bp.route('/assign', methods=['POST'])
+def assign_architecte():
+    # Récupérer les données de la requête
+    data = request.get_json()
+    client_id = data.get('client_id')
+    architecte_id = data.get('architecte_id')
+
+    # Vérifier que les IDs sont fournis
+    if not client_id or not architecte_id:
+        return jsonify({'error': 'client_id and architecte_id are required'}), 400
+
+    # Appeler la méthode statique pour assigner l'architecte au client
+    result = ClientService.assign_architecte_to_client(client_id, architecte_id)
+
+    # Vérifier le résultat
+    if result is None:
+        return jsonify({'error': 'Client or Architecte not found'}), 404
+
+    # Retourner le résultat
+    return jsonify(result.to_dict()), 200
+
+### Assign an architect to a client
+POST http://localhost:5000/api/clients/assign
+Content-Type: application/json
+
+{
+  "client_id": 6,
+  "architecte_id": 6
+}
+
+erreur 404
+
 # Structure d'un projet Flask pour une API avec plusieurs tables et relations
 
 ## Introduction
@@ -307,4 +349,5 @@ Relations : Utilisez db.relationship pour One-to-Many et db.Table pour Many-to-M
 Alembic : Vérifiez les scripts de migration générés et testez-les avant production.
 Validation : Utilisez Marshmallow pour valider et sérialiser les données.
 Tests : Écrivez des tests pour les relations et les migrations.
+
 
