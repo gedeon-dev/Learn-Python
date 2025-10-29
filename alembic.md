@@ -1,3 +1,29 @@
+
+ 
+ @client_bp.route('/assign', methods=['POST'])
+def assign_architecte():
+    """
+    🔹 Assigne un architecte à un client
+    📥 JSON attendu :
+    {
+        "client_id": 6,
+        "architecte_id": 6
+    }
+    """
+    data = request.get_json()
+    client_id = data.get('client_id')
+    architecte_id = data.get('architecte_id')
+
+    if not client_id or not architecte_id:
+        return jsonify({'error': 'client_id and architecte_id are required'}), 400
+
+    result = ClientService.assign_architecte_to_client(client_id, architecte_id)
+
+    if result is None:
+        return jsonify({'error': 'Client or Architecte not found'}), 404
+
+    return jsonify(result), 200
+
  @staticmethod
     def assign_architecte_to_client(client_id, architecte_id):
         client = Client.query.get(client_id)
@@ -349,5 +375,6 @@ Relations : Utilisez db.relationship pour One-to-Many et db.Table pour Many-to-M
 Alembic : Vérifiez les scripts de migration générés et testez-les avant production.
 Validation : Utilisez Marshmallow pour valider et sérialiser les données.
 Tests : Écrivez des tests pour les relations et les migrations.
+
 
 
