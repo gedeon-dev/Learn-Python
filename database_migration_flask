@@ -1,0 +1,102 @@
+from sqlalchemy import inspect, text
+from src.app.database.db import db
+
+def migrate_database():
+    # Inspecter la base de données
+    inspector = inspect(db.engine)
+
+    # Récupérer les tables existantes
+    existing_tables = inspector.get_table_names()
+
+    # Récupérer les tables définies dans les modèles
+    defined_tables = [table.name for table in db.Model.metadata.tables.values()]
+
+    # Ajouter les tables manquantes
+    for table_name in defined_tables:
+        if table_name not in existing_tables:
+            print(f"Création de la table {table_name}")
+            db.Model.metadata.tables[table_name].create(db.engine)
+
+    # Comparer les colonnes pour chaque table
+    for table_name in defined_tables:
+        if table_name in existing_tables:
+            # Récupérer les colonnes existantes
+            existing_columns = inspector.get_columns(table_name)
+            existing_column_names = {column['name'] for column in existing_columns}
+
+            # Récupérer les colonnes définies dans le modèle
+            model_table = db.Model.metadata.tables[table_name]
+            defined_column_names = set(model_table.columns.keys())
+
+            # Ajouter les colonnes manquantes
+            for column_name in defined_column_names - existing_column_names:
+                print(f"Ajout de la colonne {column_name} à la table {table_name}")
+                # Récupérer le type de la colonne
+                column_type = model_table.columns[column_name].type
+                # Générer le SQL pour ajouter la colonne
+                alter_table = text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                db.session.execute(alter_table)
+                db.session.commit()
+
+
+"""
+from sqlalchemy import inspect, text, ForeignKeyConstraint
+from src.app.database.db import db
+
+def migrate_database():
+    # Inspecter la base de données
+    inspector = inspect(db.engine)
+
+    # Récupérer les tables existantes
+    existing_tables = inspector.get_table_names()
+
+    # Récupérer les tables définies dans les modèles
+    defined_tables = [table.name for table in db.Model.metadata.tables.values()]
+
+    # Ajouter les tables manquantes
+    for table_name in defined_tables:
+        if table_name not in existing_tables:
+            print(f"Création de la table {table_name}")
+            db.Model.metadata.tables[table_name].create(db.engine)
+
+    # Comparer les colonnes et les relations pour chaque table
+    for table_name in defined_tables:
+        if table_name in existing_tables:
+            # Récupérer les colonnes existantes
+            existing_columns = inspector.get_columns(table_name)
+            existing_column_names = {column['name'] for column in existing_columns}
+
+            # Récupérer les colonnes définies dans le modèle
+            model_table = db.Model.metadata.tables[table_name]
+            defined_column_names = set(model_table.columns.keys())
+
+            # Ajouter les colonnes manquantes
+            for column_name in defined_column_names - existing_column_names:
+                print(f"Ajout de la colonne {column_name} à la table {table_name}")
+                # Récupérer le type de la colonne
+                column_type = model_table.columns[column_name].type
+                # Générer le SQL pour ajouter la colonne
+                alter_table = text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                db.session.execute(alter_table)
+
+            # Récupérer les contraintes de clé étrangère existantes
+            existing_foreign_keys = inspector.get_foreign_keys(table_name)
+            existing_fk_names = {fk['name'] for fk in existing_foreign_keys}
+
+            # Récupérer les contraintes de clé étrangère définies dans le modèle
+            defined_foreign_keys = set()
+            for constraint in model_table.constraints:
+                if isinstance(constraint, ForeignKeyConstraint):
+                    defined_foreign_keys.add(constraint.name)
+
+            # Ajouter les contraintes de clé étrangère manquantes
+            for fk_name in defined_foreign_keys - existing_fk_names:
+                for constraint in model_table.constraints:
+                    if isinstance(constraint, ForeignKeyConstraint) and constraint.name == fk_name:
+                        print(f"Ajout de la contrainte de clé étrangère {fk_name} à la table {table_name}")
+                        # Générer le SQL pour ajouter la contrainte de clé étrangère
+                        alter_table = text(f"ALTER TABLE {table_name} ADD CONSTRAINT {fk_name} FOREIGN KEY ({', '.join(constraint.column_keys)}) REFERENCES {constraint.referred_table.name}({', '.join(constraint.referred_columns)})")
+                        db.session.execute(alter_table)
+
+            db.session.commit()
+"""
