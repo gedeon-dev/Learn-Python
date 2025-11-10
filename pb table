@@ -1,0 +1,164 @@
+from src.app.database.db import db
+
+class RendezVous(db.Model):
+    __tablename__ = 'rendezvous'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    lieu = db.Column(db.String, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    heure = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String, nullable=False) # "prevu", "annuler", "terminé"
+    type = db.Column(db.String, nullable=False) # "visio", "presentiel"
+    description = db.Column(db.Text)
+
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    architecte_id = db.Column(db.Integer, db.ForeignKey('architectes.id'), nullable=False)
+
+
+    def to_dict(self):
+        return {
+            'id' : self.id,
+            'lieu' : self.lieu,
+            'date' : self.date,
+            'heure' : self.heure,
+            'type' : self.type,
+            'description' : self.description,
+            'client_id' : self.client_id,
+            'architecte_id' : self.architecte_id
+        }
+
+
+
+        from src.app.database.db import db
+from .association import projet_architecte
+
+class Projet(db.Model):
+    __tablename__ = 'projets'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String, nullable=False) # "debute", "negociation", "encours", "termine"
+    date_creation = db.Column(db.Date, nullable=False)
+
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+
+    # Relation Many-to-Many
+    architectes = db.relationship('Architecte', secondary=projet_architecte, back_populates='projets', lazy='select')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'description': self.description,
+            'status': self.status,
+            'date_creation': self.date_creation,
+            'client_id': self.client_id,
+            #'architectes': self.architectes.to_dict()
+        }
+
+
+from flask import Flask
+from sqlalchemy import inspect
+
+from src.app.config.Config import Config
+from src.app.database.db import db
+from src.app.database.migration import migrate_database
+from src.app.models.Architecte import Architecte
+from src.app.models.Client import Client
+from src.app.routes.client_routes import client_bp
+from src.app.routes.architect_routes import archi_bp
+
+def main():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    db.init_app(app)
+    app.register_blueprint(client_bp)
+    app.register_blueprint(archi_bp)
+
+    with app.app_context():
+        db.create_all()
+        insp = inspect(db.engine)
+        inspector = inspect(Architecte)
+        for relationship in inspector.relationships:
+            print(f"Relation: {relationship.key} -> {relationship.mapper.class_}")
+        print(insp.get_table_names())
+        print(db.engine.url)
+        inspector = inspect(Client)
+        migrate_database()
+        #print("===============================")
+        #defined_tables = [table.name for table in db.Model.metadata.tables.values()]
+        #print(db.Model.metadata.tables.values())
+        #print("===================================")
+        for relationship in inspector.relationships:
+            print(f"Relation: {relationship.key} -> {relationship.mapper.class_}")
+    return app
+
+
+from src.app.database.db import db
+
+projet_architecte = db.Table('projet_architecte',
+                             db.Column('projet_id', db.Integer, db.ForeignKey('projets.id'), nullable=False, primary_key=True),
+                             db.Column('architecte_id', db.Integer, db.ForeignKey('architectes.id'), nullable=False, primary_key=True)
+                             )
+
+
+     from src.app.database.db import db
+from .association import projet_architecte
+
+class Architecte(db.Model):
+    __tablename__ = 'architectes'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nom = db.Column(db.String, nullable=False)
+    prenom = db.Column(db.String, nullable=False)
+    tel = db.Column(db.Integer)
+    email = db.Column(db.String)
+    tarif_horaire = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String, nullable=False)
+    disponibilite = db.Column(db.Boolean, nullable=False, default=True)
+
+    clients = db.relationship('Client', backref='architecte', lazy='select')
+    rendezvous = db.relationship('RendezVous', backref='architecte', lazy='select')
+
+    projets = db.relationship('Projet', secondary=projet_architecte, back_populates='architectes', lazy='select')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nom': self.nom,
+            'prenom': self.prenom,
+            'email': self.email,
+            'tel': self.tel,
+            'tarif_horaire': self.tarif_horaire,
+            'type': self.type,
+            'disponibilite': self.disponibilite,
+            'clients': [client.to_dict() for client in self.clients],
+            'rendezvous': [rv.to_dict() for rv in self.rendezvous],
+            'projets': [projet.to_dict() for projet in self.projets]
+        }
+
+
+        from src.app.database.db import db
+
+class Client(db.Model):
+    __tablename__ = 'clients'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nom = db.Column(db.String, nullable=False)
+    prenom = db.Column(db.String, nullable= False)
+    tel = db.Column(db.Integer)
+    email = db.Column(db.String)
+
+    architecte_id = db.Column(db.Integer, db.ForeignKey('architectes.id'))
+
+    rendezvous = db.relationship('RendezVous', backref='client', lazy='select')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nom': self.nom,
+            'prenom': self.prenom,
+            'email': self.email,
+            'tel': self.tel,
+            'architecte_id': self.architecte_id,
+            'rendezvous': [rv.to_dict() for rv in self.rendezvous]
+        }
